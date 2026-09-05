@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>What kind of space is this? — Room Type Predictor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,500&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<canvas id="skyline" aria-hidden="true"></canvas>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark" aria-hidden="true">
+      <svg viewBox="0 0 24 24" width="18" height="18">
+        <circle cx="12" cy="12" r="3.4" fill="currentColor"/>
+        <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.5"/>
+      </svg>
+    </span>
+    <span class="brand-name">Room Type Predictor</span>
+  </div>
+
+  <div class="topbar-right">
+    <button class="status-pill" id="status-pill" type="button" title="Click to re-check connection">
+      <span class="dot" id="status-dot"></span>
+      <span id="status-text">Checking service…</span>
+    </button>
+
+    <div class="settings-wrap">
+      <button class="icon-btn" id="settings-btn" type="button" aria-haspopup="true" aria-expanded="false" aria-label="API settings">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 13a7.97 7.97 0 0 0 0-2l2.02-1.58-2-3.46-2.38.96a8 8 0 0 0-1.73-1L14.9 3.5h-4l-.4 2.42a8 8 0 0 0-1.73 1l-2.38-.96-2 3.46L6.4 11a7.97 7.97 0 0 0 0 2l-2.02 1.58 2 3.46 2.38-.96a8 8 0 0 0 1.73 1l.4 2.42h4l.4-2.42a8 8 0 0 0 1.73-1l2.38.96 2-3.46L19.4 13Z"/>
+        </svg>
+      </button>
+      <div class="popover" id="settings-popover" role="dialog" aria-label="API settings">
+        <label for="api-base-input">API base URL</label>
+        <input type="text" id="api-base-input" placeholder="http://127.0.0.1:8000" autocomplete="off" spellcheck="false">
+        <div class="popover-actions">
+          <button type="button" class="btn btn-ghost btn-sm" id="api-base-reset">Reset</button>
+          <button type="button" class="btn btn-primary btn-sm" id="api-base-save">Save</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="layout">
+
+  <!-- ============ FORM PANEL ============ -->
+  <section class="form-panel">
+    <div class="intro">
+      <h1>What kind of space<br>is this?</h1>
+      <p class="lede">Enter a listing's details and the model will tell you whether it reads as an entire home, a private room, or something else — with a full confidence breakdown.</p>
+    </div>
+
+    <form id="predict-form" novalidate>
+
+      <!-- Where it is -->
+      <fieldset class="field-group">
+        <legend>Where it is</legend>
+
+        <div class="where-layout">
+          <div class="where-fields">
+            <div class="field-row">
+              <div class="field">
+                <label for="latitude">Latitude</label>
+                <input type="number" id="latitude" name="latitude" step="0.000001" min="-90" max="90" placeholder="40.71427" required>
+                <span class="field-hint">−90 to 90</span>
+                <span class="field-error" id="err-latitude"></span>
+              </div>
+              <div class="field">
+                <label for="longitude">Longitude</label>
+                <input type="number" id="longitude" name="longitude" step="0.000001" min="-180" max="180" placeholder="-74.00597" required>
+                <span class="field-hint">−180 to 180</span>
+                <span class="field-error" id="err-longitude"></span>
+              </div>
+            </div>
+
+            <div class="field-row">
+              <div class="field">
+                <label for="neighbourhood_group">Borough</label>
+                <select id="neighbourhood_group" name="neighbourhood_group" required>
+                  <option value="" disabled selected>Choose one</option>
+                  <option value="Manhattan">Manhattan</option>
+                  <option value="Brooklyn">Brooklyn</option>
+                  <option value="Queens">Queens</option>
+                  <option value="Bronx">Bronx</option>
+                  <option value="Staten Island">Staten Island</option>
+                </select>
+                <span class="field-error" id="err-neighbourhood_group"></span>
+              </div>
+              <div class="field">
+                <label for="neighbourhood">Neighbourhood</label>
+                <input type="text" id="neighbourhood" name="neighbourhood" placeholder="e.g. Williamsburg" required>
+                <span class="field-error" id="err-neighbourhood"></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="mini-map" id="mini-map" aria-hidden="true">
+            <svg viewBox="0 0 200 220" class="map-svg">
+              <!-- soft borough clusters -->
+              <g class="borough-clusters">
+                <circle class="cluster" data-borough="Manhattan" cx="100" cy="95" r="26"></circle>
+                <circle class="cluster" data-borough="Brooklyn" cx="110" cy="155" r="30"></circle>
+                <circle class="cluster" data-borough="Queens" cx="150" cy="115" r="34"></circle>
+                <circle class="cluster" data-borough="Bronx" cx="95" cy="35" r="24"></circle>
+                <circle class="cluster" data-borough="Staten Island" cx="45" cy="185" r="22"></circle>
+              </g>
+              <circle id="map-pin-ring" cx="100" cy="110" r="6" class="pin-ring"></circle>
+              <circle id="map-pin" cx="100" cy="110" r="3.4" class="pin"></circle>
+            </svg>
+            <span class="map-caption" id="map-caption">Drop coordinates to place the pin</span>
+          </div>
+        </div>
+      </fieldset>
+
+      <!-- Price & stay -->
+      <fieldset class="field-group">
+        <legend>Price &amp; stay</legend>
+        <div class="field-row field-row-3">
+          <div class="field">
+            <label for="price">Price per night ($)</label>
+            <input type="number" id="price" name="price" min="1" step="1" placeholder="150" required>
+            <span class="field-error" id="err-price"></span>
+          </div>
+          <div class="field">
+            <label for="minimum_nights">Minimum nights</label>
+            <input type="number" id="minimum_nights" name="minimum_nights" min="1" max="365" step="1" placeholder="3" required>
+            <span class="field-error" id="err-minimum_nights"></span>
+          </div>
+          <div class="field">
+            <label for="availability_365">Available days / yr</label>
+            <input type="number" id="availability_365" name="availability_365" min="0" max="365" step="1" placeholder="180" required>
+            <span class="field-error" id="err-availability_365"></span>
+          </div>
+        </div>
+      </fieldset>
+
+      <!-- Host & activity -->
+      <fieldset class="field-group">
+        <legend>Host &amp; activity</legend>
+        <div class="field-row field-row-3">
+          <div class="field">
+            <label for="number_of_reviews">Total reviews</label>
+            <input type="number" id="number_of_reviews" name="number_of_reviews" min="0" step="1" placeholder="24" required>
+            <span class="field-error" id="err-number_of_reviews"></span>
+          </div>
+          <div class="field">
+            <label for="reviews_per_month">Reviews / month</label>
+            <input type="number" id="reviews_per_month" name="reviews_per_month" min="0" step="0.01" placeholder="1.2" required>
+            <span class="field-error" id="err-reviews_per_month"></span>
+          </div>
+          <div class="field">
+            <label for="calculated_host_listings_count">Host's other listings</label>
+            <input type="number" id="calculated_host_listings_count" name="calculated_host_listings_count" min="0" step="1" placeholder="1" required>
+            <span class="field-error" id="err-calculated_host_listings_count"></span>
+          </div>
+        </div>
+      </fieldset>
+
+      <div class="form-actions">
+        <button type="button" class="btn btn-ghost" id="sample-btn">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5"/></svg>
+          Load a sample listing
+        </button>
+        <button type="submit" class="btn btn-primary" id="predict-btn">
+          <span class="btn-label">Predict room type</span>
+          <span class="btn-spinner" aria-hidden="true"></span>
+        </button>
+      </div>
+    </form>
+  </section>
+
+  <!-- ============ RESULT PANEL ============ -->
+  <aside class="result-panel" id="result-panel" aria-live="polite">
+
+    <div class="result-state" data-state="idle" id="state-idle">
+      <div class="idle-glyph">
+        <svg viewBox="0 0 120 120" width="88" height="88">
+          <circle cx="60" cy="60" r="46" fill="none" stroke="currentColor" stroke-width="1" opacity="0.25"/>
+          <circle cx="60" cy="60" r="32" fill="none" stroke="currentColor" stroke-width="1" opacity="0.4"/>
+          <circle cx="60" cy="60" r="4" fill="currentColor"/>
+        </svg>
+      </div>
+      <h2>Nothing predicted yet</h2>
+      <p>Fill in the listing on the left, then predict to see the room type and the model's confidence here.</p>
+    </div>
+
+    <div class="result-state" data-state="loading" id="state-loading" hidden>
+      <div class="loading-rings" aria-hidden="true">
+        <span></span><span></span><span></span>
+      </div>
+      <h2>Reading the listing…</h2>
+      <p>Sending it through the model.</p>
+    </div>
+
+    <div class="result-state" data-state="error" id="state-error" hidden>
+      <div class="error-glyph" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.6">
+          <path d="M12 9v4M12 16.5h.01"/>
+          <path d="M10.3 3.9 2.6 17.5A1.8 1.8 0 0 0 4.2 20.2h15.6a1.8 1.8 0 0 0 1.6-2.7L13.7 3.9a1.8 1.8 0 0 0-3.4 0Z"/>
+        </svg>
+      </div>
+      <h2>Couldn't get a prediction</h2>
+      <p id="error-detail">The service didn't respond. Check the API URL in settings and try again.</p>
+    </div>
+
+    <div class="result-state" data-state="result" id="state-result" hidden>
+      <div class="donut-wrap">
+        <svg viewBox="0 0 160 160" class="donut" id="donut-svg">
+          <circle class="donut-track" cx="80" cy="80" r="64"></circle>
+          <g id="donut-segments"></g>
+        </svg>
+        <div class="donut-center">
+          <span class="donut-icon" id="result-icon"></span>
+          <span class="donut-pct" id="result-pct">0%</span>
+          <span class="donut-pct-label">confidence</span>
+        </div>
+      </div>
+
+      <p class="result-eyebrow">This listing reads as</p>
+      <h2 class="result-title" id="result-title">—</h2>
+
+      <div class="breakdown" id="breakdown"></div>
+    </div>
+
+  </aside>
+
+</main>
+
+<footer class="page-footer">
+  <p>Runs against your own FastAPI service — nothing here is sent anywhere else. Adjust the API URL from the settings icon above.</p>
+</footer>
+
+<script src="script.js"></script>
+</body>
+</html>
