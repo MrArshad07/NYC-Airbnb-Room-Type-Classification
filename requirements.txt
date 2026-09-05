@@ -1,7 +1,7 @@
-fastapi==0.115.0
-uvicorn[standard]==0.30.6
-pydantic==2.9.2
-pandas==2.2.2
-scikit-learn==1.8.0
+fastapi==0.141.1
+uvicorn[standard]==0.52.4
+pydantic==2.13.4
+pandas==3.0.5
+scikit-learn==1.6.1
 joblib==1.5.3
-imbalanced-learn==0.12.3
+imbalanced-learn==0.14.2
