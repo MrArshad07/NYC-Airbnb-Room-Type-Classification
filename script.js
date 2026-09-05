@@ -4,7 +4,7 @@
   /* ============================================================
      0. CONFIG
      ============================================================ */
-  const DEFAULT_API_BASE = "http://127.0.0.1:8000";
+  const DEFAULT_API_BASE = "https://nyc-airbnb-room-type-classification-si8d.onrender.com";
   const STORAGE_KEY = "room-predictor-api-base";
   const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
