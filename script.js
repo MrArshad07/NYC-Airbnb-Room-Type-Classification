@@ -4,7 +4,7 @@
   /* ============================================================
      0. CONFIG
      ============================================================ */
-  const DEFAULT_API_BASE = "https://nyc-airbnb-room-type-classification-si8d.onrender.com";
+  const DEFAULT_API_BASE = window.location.origin;
   const STORAGE_KEY = "room-predictor-api-base";
   const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
